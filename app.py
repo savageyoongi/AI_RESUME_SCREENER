@@ -1,7 +1,7 @@
 import streamlit as st
 
 from resume_parser import extract_text
-from ai_analyzer import analyze_resume
+from ai_analyzer import analyze_resume, match_job_description
 
 
 st.set_page_config(
@@ -30,7 +30,7 @@ st.divider()
 
 
 # -----------------------------
-# Upload
+# Upload Resume
 # -----------------------------
 
 uploaded_file = st.file_uploader(
@@ -38,6 +38,10 @@ uploaded_file = st.file_uploader(
     type=["pdf", "docx"],
     help="Supported formats: PDF and DOCX"
 )
+
+
+# Store resume text
+resume_text = None
 
 
 if uploaded_file:
@@ -48,7 +52,6 @@ if uploaded_file:
         "🤖 Analyze Resume",
         type="primary"
     )
-
 
     if analyze_button:
 
@@ -68,9 +71,7 @@ if uploaded_file:
 
                     st.stop()
 
-
                 result = analyze_resume(resume_text)
-
 
             st.success("✅ Analysis completed!")
 
@@ -115,9 +116,7 @@ if uploaded_file:
 
             st.header("🛠️ Skills")
 
-
             col1, col2 = st.columns(2)
-
 
             with col1:
 
@@ -133,7 +132,9 @@ if uploaded_file:
 
                 else:
 
-                    st.write("No technical skills identified.")
+                    st.write(
+                        "No technical skills identified."
+                    )
 
 
             with col2:
@@ -150,7 +151,9 @@ if uploaded_file:
 
                 else:
 
-                    st.write("No soft skills identified.")
+                    st.write(
+                        "No soft skills identified."
+                    )
 
 
             st.divider()
@@ -207,7 +210,6 @@ if uploaded_file:
 
             st.header("📚 Skills to Improve")
 
-
             if result["missing_skills"]:
 
                 st.write(
@@ -229,7 +231,7 @@ if uploaded_file:
 
 
             # -----------------------------
-            # Why this role?
+            # Why This Role?
             # -----------------------------
 
             st.header("💡 Why This Role?")
@@ -259,6 +261,176 @@ if uploaded_file:
             st.error(
                 "Something went wrong while analyzing "
                 "the resume."
+            )
+
+            st.exception(e)
+
+
+# =====================================================
+# JOB DESCRIPTION MATCHER
+# =====================================================
+
+st.divider()
+
+st.header("💼 Job Description Matcher")
+
+st.write(
+    "Paste a job description below to see how well your "
+    "resume matches the position."
+)
+
+
+job_description = st.text_area(
+    "Job Description",
+    height=250,
+    placeholder=(
+        "Paste the job description here...\n\n"
+        "Example: We are looking for a Python Developer "
+        "with experience in Python, Django, SQL, REST APIs..."
+    )
+)
+
+
+if st.button("🎯 Match Resume With Job"):
+
+    # Check whether resume was uploaded
+
+    if not uploaded_file:
+
+        st.warning(
+            "Please upload a resume first."
+        )
+
+    elif not resume_text:
+
+        st.warning(
+            "Please click 'Analyze Resume' first."
+        )
+
+    elif not job_description.strip():
+
+        st.warning(
+            "Please enter a job description first."
+        )
+
+    else:
+
+        try:
+
+            with st.spinner(
+                "Comparing your resume with the job description..."
+            ):
+
+                job_result = match_job_description(
+                    resume_text,
+                    job_description
+                )
+
+
+            st.success(
+                "✅ Job matching analysis completed!"
+            )
+
+
+            # -----------------------------
+            # Match Score
+            # -----------------------------
+
+            st.subheader("📊 Job Match Score")
+
+            st.metric(
+                "Overall Match",
+                f'{job_result["match_score"]}%'
+            )
+
+
+            # -----------------------------
+            # Matched Skills
+            # -----------------------------
+
+            st.subheader("✅ Matched Skills")
+
+            if job_result["matched_skills"]:
+
+                for skill in job_result["matched_skills"]:
+
+                    st.write(
+                        f"✅ {skill}"
+                    )
+
+            else:
+
+                st.write(
+                    "No major matching skills identified."
+                )
+
+
+            # -----------------------------
+            # Missing Skills
+            # -----------------------------
+
+            st.subheader("⚠️ Missing Skills")
+
+            if job_result["missing_skills"]:
+
+                for skill in job_result["missing_skills"]:
+
+                    st.warning(
+                        skill
+                    )
+
+            else:
+
+                st.success(
+                    "No major missing skills identified."
+                )
+
+
+            # -----------------------------
+            # Strengths
+            # -----------------------------
+
+            st.subheader("💪 Your Strengths")
+
+            for strength in job_result["strengths"]:
+
+                st.write(
+                    f"• {strength}"
+                )
+
+
+            # -----------------------------
+            # Recommendation
+            # -----------------------------
+
+            st.subheader("💡 Recommendation")
+
+            st.info(
+                job_result["recommendation"]
+            )
+
+
+            # -----------------------------
+            # Improvement Suggestions
+            # -----------------------------
+
+            st.subheader(
+                "📚 Improvement Suggestions"
+            )
+
+            for suggestion in job_result[
+                "improvement_suggestions"
+            ]:
+
+                st.write(
+                    f"• {suggestion}"
+                )
+
+
+        except Exception as e:
+
+            st.error(
+                "Unable to analyze the job description."
             )
 
             st.exception(e)
